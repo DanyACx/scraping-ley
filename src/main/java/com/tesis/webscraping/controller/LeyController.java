@@ -23,11 +23,36 @@ public class LeyController {
 		this.leyOrquestadorService = leyOrquestadorService;
 	}
 	
+
+	@GetMapping("/ListAllLeyes")
+    public List<Ley> todasLeyes() {
+    	
+        return leyOrquestadorService.listAllLeyes();
+    }
+	
 	@PostMapping("/scrapingAndSave")
     public List<Ley> guardarLeyes(
             @RequestParam String url, @RequestParam String rangoMin, @RequestParam String rangoMax) {
     	
         return leyOrquestadorService.ejecutarScrapingYGuardar(url, rangoMin, rangoMax);
+    }
+	
+	@PostMapping("/update-links-secondPage")
+    public ResponseEntity<String> updateLinksSecondPage() {
+		leyOrquestadorService.updateLinksSecondPageV2();
+        return ResponseEntity.ok("Scraping completado - 2da Page");
+    }
+	
+	@PostMapping("/update-detail-low")
+    public ResponseEntity<String> updateDetailLow() {
+		leyOrquestadorService.registrarDetalleLey();
+        return ResponseEntity.ok("Proceso de actualización iniciado - Detalle Ley");
+    }
+	
+	@PostMapping("/update-links-secondPageFix")
+    public ResponseEntity<String> updateLinksSecondPageErrorScraping() {
+		leyOrquestadorService.updateLinksSecondScrapingError();
+        return ResponseEntity.ok("Scraping Error - Fix completado - 2da Page");
     }
 	
 	@DeleteMapping("/delete-all-leyes")
@@ -42,22 +67,10 @@ public class LeyController {
         return ResponseEntity.ok("Se eliminaron todos los documentos de la colección 'Historial'.");
     }
 	
-	@GetMapping("/ListAllLeyes")
-    public List<Ley> todasLeyes() {
-    	
-        return leyOrquestadorService.listAllLeyes();
-    }
-	
-	@PostMapping("/update-links-secondPage")
-    public ResponseEntity<String> updateLinksSecondPage() {
-		leyOrquestadorService.registrarLinksDocs();
-        return ResponseEntity.ok("Proceso de actualización iniciado - 2da Page");
-    }
-	
-	@PostMapping("/update-detail-low")
-    public ResponseEntity<String> updateDetailLow() {
-		leyOrquestadorService.registrarDetalleLey();
-        return ResponseEntity.ok("Proceso de actualización iniciado - Detalle Ley");
+	@DeleteMapping("/delete-allScrapingError")
+    public ResponseEntity<String> eliminarTodoScrapingError() {
+		leyOrquestadorService.deleteAllErrorScraping();
+        return ResponseEntity.ok("Se eliminaron todos los documentos de la colección 'errores_scraping'.");
     }
 	
 }

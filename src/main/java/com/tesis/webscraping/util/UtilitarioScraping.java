@@ -4,9 +4,14 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import com.tesis.webscraping.service.LeyOrquestadorService;
+
 import java.util.Random;
 
 public class UtilitarioScraping {
+	
+	private static final org.slf4j.Logger log = LogUtil.getLogger(LeyOrquestadorService.class);
 
 	public static String decodificarURL(String urlCodificada) {
 		
@@ -36,7 +41,7 @@ public class UtilitarioScraping {
 		Random random = new Random();
 		// Generamos un número aleatorio entre 3000 y 9000 ms
         int tiempoEspera = 3000 + random.nextInt(6000);
-        System.out.println("Esperando " + tiempoEspera + " ms antes de ir a la siguiente página...");
+        log.info("Esperando {} ms antes de ir a la siguiente página...", tiempoEspera);
         
         try {
             Thread.sleep(tiempoEspera);

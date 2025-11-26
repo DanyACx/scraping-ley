@@ -1,6 +1,7 @@
 package com.tesis.webscraping.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,4 +16,6 @@ public interface ILeyRepository extends MongoRepository<Ley, String> {
 	Page<Ley> findByLinkTextoNormaLegalIsNullAndLinkFichaTecnicaIsNull(Pageable pageable);
 	List<Ley> findTop10ByLinkTextoNormaLegalIsNullAndLinkFichaTecnicaIsNull();
 	List<Ley> findTop10ByPeriodoParlamentarioIsNullAndTituloIsNull();
+	List<Ley> findByLinkTextoNormaLegalIsNullAndLinkFichaTecnicaIsNull();
+	Optional<Ley> findByNumero(Integer numero);
 }

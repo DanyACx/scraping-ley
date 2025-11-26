@@ -24,6 +24,7 @@ import org.springframework.stereotype.Component;
 
 import com.tesis.webscraping.model.Ley;
 import com.tesis.webscraping.model.RegistroTabla;
+import com.tesis.webscraping.util.LogUtil;
 import com.tesis.webscraping.util.UtilitarioScraping;
 
 @Component
@@ -34,6 +35,8 @@ public class SeleniumScraperService {
    // private static final Duration ELEMENT_WAIT_TIMEOUT = Duration.ofSeconds(15);
     //private static final Duration POLLING_INTERVAL = Duration.ofMillis(500);
 	WebDriver driver = null;
+	
+	private static final org.slf4j.Logger log = LogUtil.getLogger(SeleniumScraperService.class);
 
 	public List<RegistroTabla> obtenerLeyesDesdeWeb(String url, String rangoMin, String rangoMax) {
 		System.setProperty("webdriver.chrome.driver", "./src/main/resources/chromedriver/chromedriver.exe");
@@ -470,27 +473,29 @@ public class SeleniumScraperService {
 	
 	public Map<String, String> scrapingSecondPage(WebDriver driver, String url){
 		
-		System.out.printf("[%s] Iniciando scraping de %s%n",
-			    Thread.currentThread().getName(),
-			    url);
+		log.info("[SCRAPING] URL={}", url);
 		
 		System.setProperty("webdriver.chrome.driver", "./src/main/resources/chromedriver/chromedriver.exe");
 		
 		Map<String, String> urlsMap = new HashMap<>(); 
 		
 		try {
+			driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(60));
+			driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(20));
+			
             driver.get(url);
             
             // Esperar que cargue la pagina
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
             wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("box_right_int")));
             
             // Buscar el primer elemento <li> dentro del contenedor
             WebElement primerElemento = driver.findElement(By.cssSelector("#box_right_int ul li:first-child"));
+            WebElement cuartoElemento = driver.findElement(By.cssSelector("#box_right_int ul li:nth-child(4)"));
             
             // Obtener el valor del atributo 'class'
             String clase = primerElemento.getAttribute("class");
-            System.out.println("Clase del primer elemento: " + clase);
+            String clase2 = cuartoElemento.getAttribute("class");
             
             String linkTextoNormaLegal;
             String linkFichaTecnica;
@@ -501,75 +506,67 @@ public class SeleniumScraperService {
             	
             	linkTextoNormaLegal = UtilitarioScraping.decodificarURL(iframe1.getAttribute("src"));
             	
-            	// Esperar que aparezca el link con el texto "Ficha técnica"
-            	WebElement enlaceFichaTecnica = wait.until(
-            	    ExpectedConditions.elementToBeClickable(By.xpath("//a[contains(text(),'Ficha técnica')]"))
-            	);
-            	
-            	UtilitarioScraping.tiempoClic();
-            	
-            	enlaceFichaTecnica.click();
-            	
-            	WebElement iframe2 = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("windowO2"))); // ejemplo si aparece un iframe
-            	linkFichaTecnica = UtilitarioScraping.decodificarURL(iframe2.getAttribute("src"));
-            	
-            	
-            	WebElement enlaceExpediente = wait.until(
-                			ExpectedConditions.elementToBeClickable(By.xpath("//a[contains(text(),'Expediente del Proyecto de Ley')]"))
+            	if(!"btnodata".equals(clase2)) {
+            		// Esperar que aparezca el link con el texto "Ficha técnica"
+                	WebElement enlaceFichaTecnica = wait.until(
+                	    ExpectedConditions.elementToBeClickable(By.xpath("//a[contains(text(),'Ficha técnica')]"))
                 	);
-            	
-            	String onclickValue = enlaceExpediente.getAttribute("onclick");
-            	// Extraer la URL usando una expresión regular simple:
-            	Pattern pattern = Pattern.compile("window\\.open\\('([^']+)'");
-            	Matcher matcher = pattern.matcher(onclickValue);
-            	
-            	String href = "";
-            	
-            	if (matcher.find()) 
-            	    href = matcher.group(1);
-            	   
-            	linkTerceraPagina = UtilitarioScraping.decodificarURL(href);
-
-            	
+                	
+                	UtilitarioScraping.tiempoClic();
+                	
+                	enlaceFichaTecnica.click();
+                	
+                	WebElement iframe2 = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("windowO2"))); // ejemplo si aparece un iframe
+                	linkFichaTecnica = UtilitarioScraping.decodificarURL(iframe2.getAttribute("src"));
+            		
+            	} else {
+            		linkFichaTecnica = null;
+            	}
+        
             }else {
-            	
             	linkTextoNormaLegal = null;
-            	WebElement enlaceFichaTecnica = wait.until(
-            			ExpectedConditions.elementToBeClickable(By.xpath("//a[contains(text(),'Ficha técnica')]"))
-                	);
             	
-            	UtilitarioScraping.tiempoClic();
-            	
-            	enlaceFichaTecnica.click();
-            	
-            	WebElement iframe2 = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("windowO2"))); // ejemplo si aparece un iframe
-            	linkFichaTecnica = UtilitarioScraping.decodificarURL(iframe2.getAttribute("src"));
-            	
-            	WebElement enlaceExpediente = wait.until(
-                			ExpectedConditions.elementToBeClickable(By.xpath("//a[contains(text(),'Expediente del Proyecto de Ley')]"))
-                	);
-            	
-            	String onclickValue = enlaceExpediente.getAttribute("onclick");
-            	
-            	// Extraer la URL usando una expresión regular simple:
-            	Pattern pattern = Pattern.compile("window\\.open\\('([^']+)'");
-            	Matcher matcher = pattern.matcher(onclickValue);
-            	
-            	String href = "";
-            	
-            	if (matcher.find()) 
-            	    href = matcher.group(1);
-
-            	linkTerceraPagina = UtilitarioScraping.decodificarURL(href);
-            	
+            	if(!"btnodata".equals(clase2)) {
+            		
+            		WebElement enlaceFichaTecnica = wait.until(
+                			ExpectedConditions.elementToBeClickable(By.xpath("//a[contains(text(),'Ficha técnica')]"))
+                    	);
+                	
+                	UtilitarioScraping.tiempoClic();
+                	
+                	enlaceFichaTecnica.click();
+                	
+                	WebElement iframe2 = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("windowO2"))); // ejemplo si aparece un iframe
+                	linkFichaTecnica = UtilitarioScraping.decodificarURL(iframe2.getAttribute("src"));
+            	} else {
+					linkFichaTecnica = null;
+            	}
             }
+            
+            WebElement enlaceExpediente = wait.until(
+        			ExpectedConditions.elementToBeClickable(By.xpath("//a[contains(text(),'Expediente del Proyecto de Ley')]"))
+        	);
+    	
+	    	String onclickValue = enlaceExpediente.getAttribute("onclick");
+	    	
+	    	// Extraer la URL usando una expresión regular simple:
+	    	Pattern pattern = Pattern.compile("window\\.open\\('([^']+)'");
+	    	Matcher matcher = pattern.matcher(onclickValue);
+	    	
+	    	String href = "";
+	    	
+	    	if (matcher.find()) 
+	    	    href = matcher.group(1);
+	
+	    	linkTerceraPagina = UtilitarioScraping.decodificarURL(href);
 
             urlsMap.put("linkTextoNormaLegal", linkTextoNormaLegal);
             urlsMap.put("linkFichaTecnica", linkFichaTecnica);
             urlsMap.put("linkTerceraPagina", linkTerceraPagina);
             
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Error en scrapingSecondPage(url={})", url);
+	        throw new RuntimeException(e);
 		}
 	
 		return urlsMap;
