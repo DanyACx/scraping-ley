@@ -728,6 +728,168 @@ public class SeleniumScraperService {
 		return urlsMap;
 	}
 	
+	public Map<String, Object> scrapingThirdPage(WebDriver driver, String url) {
+		
+		log.info("[SCRAPING] URL={}", url);
+		System.setProperty("webdriver.chrome.driver", "./src/main/resources/chromedriver/chromedriver.exe");
+		
+		Map<String, Object> urlsMap = new HashMap<>(); 
+		
+		try {
+				driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
+				driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+				
+				driver.get(url);
+				
+				WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+			    WebElement container = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("p-fieldset-0-content")));
 	
+			    // Utilidad para obtener texto de un campo simple (div -> <b>Etiqueta</b><br>valor)
+			    Function<String, String> getCampoTexto = (String etiqueta) -> {
+			        try {
+			        	WebDriverWait localWait = new WebDriverWait(driver, Duration.ofSeconds(20));
+
+			            // Espera a que el div con la etiqueta esté presente
+			            WebElement div = localWait.until(ExpectedConditions.presenceOfElementLocated(
+			                By.xpath(".//div[b[contains(.,'" + etiqueta + "')]]")
+			            ));
+			            
+			            return div.getText().replace(etiqueta, "").trim();
+			        } catch (NoSuchElementException e) {
+			            return null;
+			        }
+			    };
+	
+			    // Campos simples
+			    urlsMap.put("periodoParlamentario", getCampoTexto.apply("Periodo Parlamentario"));
+			    urlsMap.put("legislatura", getCampoTexto.apply("Legislatura"));
+			    urlsMap.put("fechaPresentacion", getCampoTexto.apply("Fecha de Presentación"));
+			    urlsMap.put("proponente", getCampoTexto.apply("Proponente"));
+			    urlsMap.put("titulo", getCampoTexto.apply("Título"));
+			    urlsMap.put("sumilla", getCampoTexto.apply("Sumilla"));
+			    urlsMap.put("observaciones", getCampoTexto.apply("Observaciones"));
+			    urlsMap.put("grupoParlamentario", getCampoTexto.apply("Grupo Parlamentario"));
+			    urlsMap.put("ultimoEstado", getCampoTexto.apply("Último Estado"));
+	
+			    // Autor principal
+			    try {
+			        WebElement divAutor = container.findElement(By.xpath(".//div[b[contains(.,'Autor Principal')]]"));
+			        
+			        List<WebElement> listas = divAutor.findElements(By.tagName("ul"));
+			        
+			        if (!listas.isEmpty()) {
+			            final List<WebElement> autores = divAutor.findElements(By.xpath(".//ul//a"));
+			            
+			            List<String> nombresAutores = autores.stream()
+			                .map(a -> a.getText().trim())
+			                .collect(Collectors.toList());
+			            
+			            urlsMap.put("autorPrincipal", nombresAutores);
+			            
+			        } else {
+			        	List<String> listaConUnElemento = Arrays.asList("- -");
+			        	urlsMap.put("autorPrincipal", listaConUnElemento);
+			        }
+
+			    } catch (NoSuchElementException e) {
+			        //urlsMap.put("autorPrincipal", Collections.emptyList());
+			    	throw new RuntimeException(e);
+			    }
+	
+			    // Coautores
+			    try {
+			        WebElement divCoautores = container.findElement(By.xpath(".//div[b[contains(.,'Coautores')]]"));
+			        
+			        List<WebElement> verMasLinks = divCoautores.findElements(By.xpath(".//a[contains(text(),'Ver más...')]"));
+			        if (!verMasLinks.isEmpty()) {
+			            WebElement verMas = verMasLinks.get(0);
+			            
+			            wait.until(ExpectedConditions.elementToBeClickable(verMas));
+			            
+			            verMas.click();
+			            Thread.sleep(3000); // Puedes reemplazar con un WebDriverWait más fino si hay animación
+			        }
+
+			        List<WebElement> listas = divCoautores.findElements(By.tagName("ul"));
+
+			        if (!listas.isEmpty()) {
+			            final List<WebElement> coautores = divCoautores.findElements(By.xpath(".//ul//a[not(contains(text(),'Ver más...'))]"));
+			            
+			            List<String> nombresCoautores = coautores.stream()
+			                .map(a -> a.getText().trim())
+			                .filter(texto -> !texto.isEmpty())
+			                .collect(Collectors.toList());
+			            
+			            urlsMap.put("coautores", nombresCoautores);
+			            
+			        } else {
+			        	List<String> listaConUnElemento = Arrays.asList("- -");
+			        	urlsMap.put("coautores", listaConUnElemento);
+			        }
+
+			    } catch (NoSuchElementException e) {
+			        //urlsMap.put("coautores", Collections.emptyList());
+			    	throw new RuntimeException(e);
+			    } /*catch (InterruptedException e) {
+			        Thread.currentThread().interrupt();
+			    }*/
+			    
+			    // Adherentes
+			    try {
+			        WebElement divAdherentes = container.findElement(By.xpath(".//div[b[contains(.,'Adherentes')]]"));
+			        
+			        List<WebElement> listas = divAdherentes.findElements(By.tagName("ul"));
+			        
+			        if (!listas.isEmpty()) {
+			            final List<WebElement> adherentes = divAdherentes.findElements(By.xpath(".//ul//a"));
+			            
+			            List<String> nombresAdhrentes = adherentes.stream()
+			                .map(a -> a.getText().trim())
+			                .collect(Collectors.toList());
+			            
+			            urlsMap.put("adhrentes", nombresAdhrentes);
+			            
+			        } else {
+			        	List<String> listaConUnElemento = Arrays.asList("- -");
+			        	urlsMap.put("adhrentes", listaConUnElemento);
+			        }
+
+			    } catch (NoSuchElementException e) {
+			        //urlsMap.put("adhrentes", Collections.emptyList());
+			    	throw new RuntimeException(e);
+			    }
+			    
+			    // Comisiones
+			    try {
+			        WebElement divComisiones = container.findElement(By.xpath(".//div[b[contains(.,'Comisiones')]]"));
+			        
+			        List<WebElement> listas = divComisiones.findElements(By.tagName("ul"));
+			        
+			        if (!listas.isEmpty()) {
+			            List<WebElement> comisiones = divComisiones.findElements(By.xpath(".//ul//span"));
+			            
+			            List<String> nombresComisiones = comisiones.stream()
+			                .map(a -> a.getText().trim())
+			                .collect(Collectors.toList());
+			            
+			            urlsMap.put("comisiones", nombresComisiones);
+			            
+			        } else {
+			        	List<String> listaConUnElemento = Arrays.asList("- -");
+			        	urlsMap.put("comisiones", listaConUnElemento);
+			        }
+
+			    } catch (NoSuchElementException e) {
+			        //urlsMap.put("comisiones", Collections.emptyList());
+			    	throw new RuntimeException(e);
+			    }
+			    
+		} catch (Exception e) {
+			log.error("Error en scrapingThirdPage(url={})", url);
+	        throw new RuntimeException(e);
+		}
+		
+		return urlsMap;
+	}
 	
 }

@@ -64,4 +64,11 @@ public class ScraperService {
 		
 		return urlsMap;
 	}
+	
+public Map<String, Object> scrapingThirdPage(WebDriver driver, String url){
+		
+		Map<String, Object> urlsMap = seleniumScraperService.scrapingThirdPage(driver, url);
+		
+		return urlsMap;
+	}
 }

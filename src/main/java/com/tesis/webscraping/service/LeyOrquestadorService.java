@@ -255,6 +255,50 @@ public class LeyOrquestadorService {
         }
     }
     
+    @SuppressWarnings("unchecked")
+	private Ley procesarLeySecuencialThirdPage(Ley ley, boolean registrarError) {
+
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless=new");
+        options.addArguments("--disable-extensions");
+        options.addArguments("--disable-pdf-viewer");
+
+        WebDriver driver = null;
+
+        try {
+            driver = new ChromeDriver(options);
+
+            Map<String, Object> urls = scraperService.scrapingThirdPage(driver, ley.getLinkTerceraPagina());
+
+            ley.setPeriodoParlamentario(urls.get("periodoParlamentario").toString());
+            ley.setLegislatura(urls.get("legislatura").toString());
+            ley.setFechaPresentacion(urls.get("fechaPresentacion").toString());
+            ley.setProponente(urls.get("proponente").toString());
+            ley.setTitulo(urls.get("titulo").toString());
+            ley.setSumilla(urls.get("sumilla").toString());
+            ley.setObservaciones(urls.get("observaciones").toString());
+            ley.setAutorPrincipal((List<String>)urls.get("autorPrincipal"));
+            ley.setCoautores((List<String>)urls.get("coautores"));
+            ley.setAdhrentes((List<String>)urls.get("adhrentes"));
+            ley.setGrupoParlamentario(urls.get("grupoParlamentario").toString());
+            ley.setComisiones((List<String>)urls.get("comisiones"));
+            ley.setUltimoEstado(urls.get("ultimoEstado").toString());
+
+            return ley;
+
+        } catch (Exception e) {
+        	
+        	if(registrarError) {
+        		registrarError(ley, e.getMessage());
+        	}
+        	
+            return null;
+
+        } finally {
+            if (driver != null) driver.quit();
+        }
+    }
+    
     private void registrarError(Ley ley, String mensaje) {
         ErrorScraping error = new ErrorScraping();
         error.setNumeroLey(ley.getNumero());
@@ -314,6 +358,54 @@ public class LeyOrquestadorService {
             }
 
             log.info("Proceso completo. Total final procesado (Fix de documentos - 2da pagina): {}", actualizadas.size());
+        }
+
+    }
+    
+    public void updateLinksThridScrapingError() {
+
+        List<ErrorScraping> todas = errorScrapingRepo.findLeyesActivas();
+
+
+        if (todas.isEmpty()) {
+            log.info("No hay más leyes pendientes para Scraping de 3ra página.");
+            
+        } else {
+        	
+        	List<Ley> actualizadas = new ArrayList<>();
+        	List<ErrorScraping> errorScrapingAux = new ArrayList<>();
+
+            for (ErrorScraping errorScraping : todas) {
+                try {
+                    // pausa opcional para no saturar al servidor
+                	int delay = 4000 + random.nextInt(6000); // delay entre 4–10 seg
+                    Thread.sleep(delay);
+
+                    Ley leyAux = leyRepository.findByNumero(errorScraping.getNumeroLey())
+							.orElseThrow(() -> new RuntimeException("Ley no encontrada para número: " + errorScraping.getNumeroLey()));
+                    
+                    Ley procesada = procesarLeySecuencialThirdPage(leyAux, false);
+                    if (procesada != null) {
+                        actualizadas.add(procesada);
+                        
+                        ErrorScraping aux = errorScraping.toBuilder()
+                                .estado(0)
+                                .build();
+                        errorScrapingAux.add(aux);
+                    }
+
+                } catch (Exception e) {
+                    log.error("Error procesando ley {}: {}", errorScraping.getNumeroLey(), e.getMessage());
+                   
+                }
+            }
+
+            if (!actualizadas.isEmpty()) {
+                leyRepository.saveAll(actualizadas);
+                errorScrapingRepo.saveAll(errorScrapingAux);
+            }
+
+            log.info("Proceso completo. Total final procesado (Fix de documentos - 3ra pagina): {}", actualizadas.size());
         }
 
     }
@@ -413,6 +505,45 @@ public class LeyOrquestadorService {
         }
 
         log.info("Proceso completo. Total documentos procesados: {}", totalProcesados);
+    }
+    
+    public void updateLinksThirdPageV2() {
+
+        List<Ley> todas = leyRepository
+                .findByTituloIsNullAndSumillaIsNull();
+
+
+        if (todas.isEmpty()) {
+            log.info("No hay más leyes pendientes para Scraping de 3ra página.");
+            
+        } else {
+        	
+        	List<Ley> actualizadas = new ArrayList<>();
+
+            for (Ley ley : todas) {
+                try {
+                    // pausa opcional para no saturar al servidor
+                	int delay = 4000 + random.nextInt(6000); // delay entre 4–10 seg
+                    Thread.sleep(delay);
+
+                    Ley procesada = procesarLeySecuencialThirdPage(ley, true);
+                    if (procesada != null) {
+                        actualizadas.add(procesada);
+                    }
+
+                } catch (Exception e) {
+                    log.error("Error procesando ley {}: {}", ley.getNumero(), e.getMessage());
+
+                    registrarError(ley, e.getMessage());
+                }
+            }
+
+            if (!actualizadas.isEmpty()) {
+                leyRepository.saveAll(actualizadas);
+            }
+
+            log.info("Proceso completo. Total final procesado: {}", actualizadas.size());
+        }
     }
     
     @SuppressWarnings("unchecked")

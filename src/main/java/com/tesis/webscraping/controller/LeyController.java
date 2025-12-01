@@ -49,10 +49,22 @@ public class LeyController {
         return ResponseEntity.ok("Proceso de actualización iniciado - Detalle Ley");
     }
 	
+	@PostMapping("/update-links-thirdPage")
+    public ResponseEntity<String> updateLinksThirdPage() {
+		leyOrquestadorService.updateLinksThirdPageV2();
+        return ResponseEntity.ok("Scraping completado - 3ra Page");
+    }
+	
 	@PostMapping("/update-links-secondPageFix")
     public ResponseEntity<String> updateLinksSecondPageErrorScraping() {
 		leyOrquestadorService.updateLinksSecondScrapingError();
         return ResponseEntity.ok("Scraping Error - Fix completado - 2da Page");
+    }
+	
+	@PostMapping("/update-links-thirdPageFix")
+    public ResponseEntity<String> updateLinksThirdPageErrorScraping() {
+		leyOrquestadorService.updateLinksThridScrapingError();
+        return ResponseEntity.ok("Scraping Error - Fix completado - 3ra Page");
     }
 	
 	@DeleteMapping("/delete-all-leyes")
