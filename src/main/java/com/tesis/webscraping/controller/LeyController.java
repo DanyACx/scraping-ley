@@ -43,12 +43,6 @@ public class LeyController {
         return ResponseEntity.ok("Scraping completado - 2da Page");
     }
 	
-	@PostMapping("/update-detail-low")
-    public ResponseEntity<String> updateDetailLow() {
-		leyOrquestadorService.registrarDetalleLey();
-        return ResponseEntity.ok("Proceso de actualización iniciado - Detalle Ley");
-    }
-	
 	@PostMapping("/update-links-thirdPage")
     public ResponseEntity<String> updateLinksThirdPage() {
 		leyOrquestadorService.updateLinksThirdPageV2();

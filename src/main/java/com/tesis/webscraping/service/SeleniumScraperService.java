@@ -30,16 +30,11 @@ import com.tesis.webscraping.util.UtilitarioScraping;
 @Component
 public class SeleniumScraperService {
 	
-	// Timeouts recomendados — ajusta según la página objetivo
-   // private static final Duration PAGE_LOAD_TIMEOUT = Duration.ofSeconds(30);
-   // private static final Duration ELEMENT_WAIT_TIMEOUT = Duration.ofSeconds(15);
-    //private static final Duration POLLING_INTERVAL = Duration.ofMillis(500);
 	WebDriver driver = null;
 	
 	private static final org.slf4j.Logger log = LogUtil.getLogger(SeleniumScraperService.class);
 
 	public List<RegistroTabla> obtenerLeyesDesdeWeb(String url, String rangoMin, String rangoMax) {
-		System.setProperty("webdriver.chrome.driver", "./src/main/resources/chromedriver/chromedriver.exe");
 
 		WebDriver driver = null;
 		
@@ -125,78 +120,11 @@ public class SeleniumScraperService {
 		return registroTabla;
 	}
 	
-	public List<RegistroTabla> obtenerTodasLeyes(String url, String rangoMin, String rangoMax){
+	public List<Ley> obtenerTodasLeyesV2(String url, WebDriver driver, String rangoMin, String rangoMax){
 		
-		System.setProperty("webdriver.chrome.driver", "./src/main/resources/chromedriver/chromedriver.exe");
-		//WebDriver driver = null;
-		List<RegistroTabla> leyesAll = new ArrayList<>();
-		
-		try {
-			ChromeOptions options = new ChromeOptions();
-			driver = new ChromeDriver(options);
-            driver.get(url);
-            
-            // Esperar que cargue el formulario
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-            wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("ctl00_ContentPlaceHolder1_BtnConsultar")));
-            
-            // Llenar el formulario
-            WebElement cotaInferior = driver.findElement(By.id("ctl00_ContentPlaceHolder1_TxtNroNormaI"));
-            cotaInferior.clear(); // Limpia el campo si tiene texto previo
-            cotaInferior.sendKeys(rangoMin); // Escribe el texto
-			
-            WebElement cotaSuperior = driver.findElement(By.id("ctl00_ContentPlaceHolder1_TxtNroNormaF"));
-            cotaSuperior.clear(); // Limpia el campo si tiene texto previo
-            cotaSuperior.sendKeys(rangoMax); // Escribe el texto
-            
-            // Clic en el botón Buscar
-            driver.findElement(By.id("ctl00_ContentPlaceHolder1_BtnConsultar")).click();
-            
-            // Esperar los resultados
-            wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("ctl00_ContentPlaceHolder1_GwDetalle")));
-            
-            WebElement paginacion = driver.findElement(By.id("ctl00_ContentPlaceHolder1_GwDetalle_ctl23_LblNroPagina"));
-            String numero = paginacion.getText();
-            
-            int cantidadPaginas = UtilitarioScraping.cantidadPaginas(numero);
-            
-            for(int i=0; i<cantidadPaginas; i++) {
-            	boolean flag = true;
-            	List<RegistroTabla> aux = new ArrayList<>();
-            	
-            	if(i == cantidadPaginas-1)
-            		flag = false;
-            	
-            	aux = leyesUnaPagina(flag);
-            	leyesAll.addAll(aux);
-            	
-            	if(i != cantidadPaginas-1) {
-            		WebElement botonSiguiente = driver.findElement(By.id("ctl00_ContentPlaceHolder1_GwDetalle_ctl23_ImgBtnSiguiente"));
-            		UtilitarioScraping.tiempoPaginacion();
-            		botonSiguiente.click();
-            	}
-            }
-			
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			if (driver != null) {
-                driver.quit();
-            }
-		}
-		
-		return leyesAll;
-	}
-	
-	public List<Ley> obtenerTodasLeyesV2(String url, String rangoMin, String rangoMax){
-		
-		System.setProperty("webdriver.chrome.driver", "./src/main/resources/chromedriver/chromedriver.exe");
-		//WebDriver driver = null;
 		List<Ley> leyesAll = new ArrayList<>();
 		
 		try {
-			ChromeOptions options = new ChromeOptions();
-			driver = new ChromeDriver(options);
             driver.get(url);
             
             // Esperar que cargue el formulario
@@ -230,7 +158,7 @@ public class SeleniumScraperService {
             	if(i == cantidadPaginas-1)
             		flag = false;
             	
-            	aux = leyesUnaPaginaV2(flag);
+            	aux = leyesUnaPaginaV2(driver, flag);
             	leyesAll.addAll(aux);
             	
             	if(i != cantidadPaginas-1) {
@@ -252,7 +180,6 @@ public class SeleniumScraperService {
 	}
 	
 	public List<RegistroTabla> leyesUnaPagina(boolean ultimaPag) {
-		//System.setProperty("webdriver.chrome.driver", "./src/main/resources/chromedriver/chromedriver.exe");
 
 		List<RegistroTabla> registroTabla = new ArrayList<>();
 
@@ -305,8 +232,7 @@ public class SeleniumScraperService {
 		return registroTabla;
 	}
 	
-	public List<Ley> leyesUnaPaginaV2(boolean ultimaPag) {
-		//System.setProperty("webdriver.chrome.driver", "./src/main/resources/chromedriver/chromedriver.exe");
+	public List<Ley> leyesUnaPaginaV2(WebDriver driver, boolean ultimaPag) {
 
 		List<Ley> registroTabla = new ArrayList<>();
 
@@ -361,121 +287,9 @@ public class SeleniumScraperService {
 		return registroTabla;
 	}
 	
-	public Map<String, String> scrapingSecondPage(String url){ // debe tomar entre 3 y 5 seg para cada URL
-		
-		System.setProperty("webdriver.chrome.driver", "./src/main/resources/chromedriver/chromedriver.exe");
-		//WebDriver driver = null;
-		
-		Map<String, String> urlsMap = new HashMap<>(); 
-		
-		try {
-			ChromeOptions options = new ChromeOptions();
-			driver = new ChromeDriver(options);
-            driver.get(url);
-            
-            // Esperar que cargue la pagina
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
-            wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("box_right_int")));
-            
-            // Buscar el primer elemento <li> dentro del contenedor
-            WebElement primerElemento = driver.findElement(By.cssSelector("#box_right_int ul li:first-child"));
-            
-            // Obtener el valor del atributo 'class'
-            String clase = primerElemento.getAttribute("class");
-            System.out.println("Clase del primer elemento: " + clase);
-            
-            String linkTextoNormaLegal;
-            String linkFichaTecnica;
-            String linkTerceraPagina;
-            
-            if("btnpress".equals(clase)) {
-            	WebElement iframe1 = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("windowO2")));
-            	
-            	linkTextoNormaLegal = UtilitarioScraping.decodificarURL(iframe1.getAttribute("src"));
-            	
-            	// Esperar que aparezca el link con el texto "Ficha técnica"
-            	WebElement enlaceFichaTecnica = wait.until(
-            	    ExpectedConditions.elementToBeClickable(By.xpath("//a[contains(text(),'Ficha técnica')]"))
-            	);
-            	
-            	UtilitarioScraping.tiempoClic();
-            	
-            	enlaceFichaTecnica.click();
-            	
-            	WebElement iframe2 = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("windowO2"))); // ejemplo si aparece un iframe
-            	linkFichaTecnica = UtilitarioScraping.decodificarURL(iframe2.getAttribute("src"));
-            	
-            	
-            	WebElement enlaceExpediente = wait.until(
-                			ExpectedConditions.elementToBeClickable(By.xpath("//a[contains(text(),'Expediente del Proyecto de Ley')]"))
-                	);
-            	
-            	String onclickValue = enlaceExpediente.getAttribute("onclick");
-            	// Extraer la URL usando una expresión regular simple:
-            	Pattern pattern = Pattern.compile("window\\.open\\('([^']+)'");
-            	Matcher matcher = pattern.matcher(onclickValue);
-            	
-            	String href = "";
-            	
-            	if (matcher.find()) 
-            	    href = matcher.group(1);
-            	   
-            	linkTerceraPagina = UtilitarioScraping.decodificarURL(href);
-
-            	
-            }else {
-            	
-            	linkTextoNormaLegal = null;
-            	WebElement enlaceFichaTecnica = wait.until(
-            			ExpectedConditions.elementToBeClickable(By.xpath("//a[contains(text(),'Ficha técnica')]"))
-                	);
-            	
-            	UtilitarioScraping.tiempoClic();
-            	
-            	enlaceFichaTecnica.click();
-            	
-            	WebElement iframe2 = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("windowO2"))); // ejemplo si aparece un iframe
-            	linkFichaTecnica = UtilitarioScraping.decodificarURL(iframe2.getAttribute("src"));
-            	
-            	WebElement enlaceExpediente = wait.until(
-                			ExpectedConditions.elementToBeClickable(By.xpath("//a[contains(text(),'Expediente del Proyecto de Ley')]"))
-                	);
-            	
-            	String onclickValue = enlaceExpediente.getAttribute("onclick");
-            	
-            	// Extraer la URL usando una expresión regular simple:
-            	Pattern pattern = Pattern.compile("window\\.open\\('([^']+)'");
-            	Matcher matcher = pattern.matcher(onclickValue);
-            	
-            	String href = "";
-            	
-            	if (matcher.find()) 
-            	    href = matcher.group(1);
-
-            	linkTerceraPagina = UtilitarioScraping.decodificarURL(href);
-            	
-            }
-
-            urlsMap.put("linkTextoNormaLegal", linkTextoNormaLegal);
-            urlsMap.put("linkFichaTecnica", linkFichaTecnica);
-            urlsMap.put("linkTerceraPagina", linkTerceraPagina);
-            
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			if (driver != null) {
-                driver.quit();
-            }
-		}
-	
-		return urlsMap;
-	}
-	
 	public Map<String, String> scrapingSecondPage(WebDriver driver, String url){
 		
 		log.info("[SCRAPING] URL={}", url);
-		
-		System.setProperty("webdriver.chrome.driver", "./src/main/resources/chromedriver/chromedriver.exe");
 		
 		Map<String, String> urlsMap = new HashMap<>(); 
 		
@@ -575,7 +389,6 @@ public class SeleniumScraperService {
 	public Map<String, Object> extraerDetalleProyectoLey(WebDriver driver, String url) {
 		
 		System.out.printf("[%s] Iniciando scraping de %s%n",Thread.currentThread().getName(),url);
-		System.setProperty("webdriver.chrome.driver", "./src/main/resources/chromedriver/chromedriver.exe");
 		
 		Map<String, Object> urlsMap = new HashMap<>(); 
 		
@@ -731,7 +544,6 @@ public class SeleniumScraperService {
 	public Map<String, Object> scrapingThirdPage(WebDriver driver, String url) {
 		
 		log.info("[SCRAPING] URL={}", url);
-		System.setProperty("webdriver.chrome.driver", "./src/main/resources/chromedriver/chromedriver.exe");
 		
 		Map<String, Object> urlsMap = new HashMap<>(); 
 		

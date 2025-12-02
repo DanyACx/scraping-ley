@@ -27,10 +27,4 @@ public class ScraperController {
         return scraperService.extraerLeyes(url, rangoMin, rangoMax);
     }
     
-    @GetMapping("/AllLeyes")
-    public List<RegistroTabla> todasLeyes(
-            @RequestParam String url, @RequestParam String rangoMin, @RequestParam String rangoMax) {
-    	
-        return scraperService.todasLeyes(url, rangoMin, rangoMax);
-    }
 }
