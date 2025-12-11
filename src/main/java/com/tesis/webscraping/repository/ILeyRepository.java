@@ -19,4 +19,5 @@ public interface ILeyRepository extends MongoRepository<Ley, String> {
 	List<Ley> findByLinkTextoNormaLegalIsNullAndLinkFichaTecnicaIsNull();
 	Optional<Ley> findByNumero(Integer numero);
 	List<Ley> findByTituloIsNullAndSumillaIsNull();
+	List<Ley> findBylinkTerceraPaginaIsNull();
 }

@@ -146,28 +146,36 @@ public class SeleniumScraperService {
             // Esperar los resultados
             wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("ctl00_ContentPlaceHolder1_GwDetalle")));
             
-            WebElement paginacion = driver.findElement(By.id("ctl00_ContentPlaceHolder1_GwDetalle_ctl23_LblNroPagina"));
-            String numero = paginacion.getText();
-            
-            int cantidadPaginas = UtilitarioScraping.cantidadPaginas(numero);
-            
-            for(int i=0; i<cantidadPaginas; i++) {
-            	boolean flag = true;
+            if(hayResultados(By.id("ctl00_ContentPlaceHolder1_GwDetalle"), driver).equals("2")) {
+            	WebElement paginacion = driver.findElement(By.id("ctl00_ContentPlaceHolder1_GwDetalle_ctl23_LblNroPagina"));
+                String numero = paginacion.getText();
+                
+                int cantidadPaginas = UtilitarioScraping.cantidadPaginas(numero);
+                
+                for(int i=0; i<cantidadPaginas; i++) {
+                	boolean flag = true;
+                	List<Ley> aux = new ArrayList<>();
+                	
+                	if(i == cantidadPaginas-1)
+                		flag = false;
+                	
+                	aux = leyesUnaPaginaV2(driver, flag);
+                	leyesAll.addAll(aux);
+                	
+                	if(i != cantidadPaginas-1) {
+                		WebElement botonSiguiente = driver.findElement(By.id("ctl00_ContentPlaceHolder1_GwDetalle_ctl23_ImgBtnSiguiente"));
+                		UtilitarioScraping.tiempoPaginacion();
+                		botonSiguiente.click();
+                	}
+                }
+            } else if(hayResultados(By.id("ctl00_ContentPlaceHolder1_GwDetalle"), driver).equals("1")) {
             	List<Ley> aux = new ArrayList<>();
-            	
-            	if(i == cantidadPaginas-1)
-            		flag = false;
-            	
-            	aux = leyesUnaPaginaV2(driver, flag);
-            	leyesAll.addAll(aux);
-            	
-            	if(i != cantidadPaginas-1) {
-            		WebElement botonSiguiente = driver.findElement(By.id("ctl00_ContentPlaceHolder1_GwDetalle_ctl23_ImgBtnSiguiente"));
-            		UtilitarioScraping.tiempoPaginacion();
-            		botonSiguiente.click();
-            	}
+				aux = leyesUnaPaginaV2(driver, false);
+				leyesAll.addAll(aux);
+            } else {
+            	log.info("No hay resultados entre las leyes {} y {}", rangoMin, rangoMax);
             }
-			
+            
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
@@ -702,6 +710,92 @@ public class SeleniumScraperService {
 		}
 		
 		return urlsMap;
+	}
+	
+	/*----------------------------------------------------------------------------*/
+	
+	public List<Ley> obtenerTodasLeyesV2Programado(String url, WebDriver driver, String numeroLeyUltimo, String numeroLeyMaximo){
+		
+		List<Ley> leyesAll = new ArrayList<>();
+		
+		try {
+            driver.get(url);
+            
+            // Esperar que cargue el formulario
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("ctl00_ContentPlaceHolder1_BtnConsultar")));
+            
+            // Llenar el formulario
+            WebElement cotaInferior = driver.findElement(By.id("ctl00_ContentPlaceHolder1_TxtNroNormaI"));
+            cotaInferior.clear(); // Limpia el campo si tiene texto previo
+            cotaInferior.sendKeys(numeroLeyUltimo); // Escribe el texto
+			
+            WebElement cotaSuperior = driver.findElement(By.id("ctl00_ContentPlaceHolder1_TxtNroNormaF"));
+            cotaSuperior.clear(); // Limpia el campo si tiene texto previo
+            cotaSuperior.sendKeys(numeroLeyMaximo); // Escribe el texto
+            
+            // Clic en el botón Buscar
+            driver.findElement(By.id("ctl00_ContentPlaceHolder1_BtnConsultar")).click();
+            
+            // Esperar los resultados
+            wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("ctl00_ContentPlaceHolder1_GwDetalle")));
+            
+            if(hayResultados(By.id("ctl00_ContentPlaceHolder1_GwDetalle"), driver).equals("2")) {
+            	
+            	WebElement paginacion = driver.findElement(By.id("ctl00_ContentPlaceHolder1_GwDetalle_ctl23_LblNroPagina"));
+            	String numero = paginacion.getText();
+                
+                int cantidadPaginas = UtilitarioScraping.cantidadPaginas(numero);
+                
+                for(int i=0; i<cantidadPaginas; i++) {
+                	boolean flag = true;
+                	List<Ley> aux = new ArrayList<>();
+                	
+                	if(i == cantidadPaginas-1)
+                		flag = false;
+                	
+                	aux = leyesUnaPaginaV2(driver, flag);
+                	leyesAll.addAll(aux);
+                	
+                	if(i != cantidadPaginas-1) {
+                		WebElement botonSiguiente = driver.findElement(By.id("ctl00_ContentPlaceHolder1_GwDetalle_ctl23_ImgBtnSiguiente"));
+                		UtilitarioScraping.tiempoPaginacion();
+                		botonSiguiente.click();
+                	}
+                }
+                
+            }else if (hayResultados(By.id("ctl00_ContentPlaceHolder1_GwDetalle"), driver).equals("1")) {
+            	// Solo una pagina
+				List<Ley> aux = new ArrayList<>();
+				aux = leyesUnaPaginaV2(driver, false);
+				leyesAll.addAll(aux);
+            } else {
+				// No hay resultados
+				log.info("No hay resultados entre las leyes {} y {}", numeroLeyUltimo, numeroLeyMaximo);
+			}
+            
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			if (driver != null) {
+                driver.quit();
+            }
+		}
+		
+		return leyesAll;
+	}
+	
+	public String hayResultados(By tablaLocator, WebDriver driver) {
+	    WebElement tabla = driver.findElement(tablaLocator);
+	    List<WebElement> filas = tabla.findElements(By.tagName("tr"));
+
+	    if (filas.size() == 1 && filas.get(0).getText().contains("No se encontro registros para la búsqueda.")) {
+	        return "0";
+	    } else if (filas.size() <= 21) { // Una página (20 resultados + encabezado)
+	        return "1";
+	    } else { // Más de una página
+	        return "2";
+	    }
 	}
 	
 }

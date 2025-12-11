@@ -52,4 +52,12 @@ public class ScraperService {
 		
 		return urlsMap;
 	}
+	
+	/*-------------------------------------------------------------------*/
+	
+	public List<Ley> todasLeyesV2Programado(String url, WebDriver driver, String numeroLeyUltimo, String numeroLeyMaximo) {
+		List<Ley> leyes = seleniumScraperService.obtenerTodasLeyesV2Programado(url, driver, numeroLeyUltimo, numeroLeyMaximo);
+		
+		return leyes;
+	}
 }

@@ -79,4 +79,12 @@ public class LeyController {
         return ResponseEntity.ok("Se eliminaron todos los documentos de la colección 'errores_scraping'.");
     }
 	
+	/*------------------------------------------------------------------------------------*/
+	
+	@PostMapping("/scrapingAndSaveProgramado")
+    public List<Ley> guardarLeyesProgramado(@RequestParam String url) {
+    	
+        return leyOrquestadorService.ejecutarScrapingYGuardarProgramado(url);
+    }
+	
 }

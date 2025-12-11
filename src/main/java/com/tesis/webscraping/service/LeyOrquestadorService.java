@@ -1,7 +1,7 @@
 package com.tesis.webscraping.service;
 
 import org.openqa.selenium.WebDriver;
-
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +29,9 @@ public class LeyOrquestadorService {
     private final IHistorialRepository historialRepository;
     private final ScraperService scraperService;
     private final IErrorScrapingRepo errorScrapingRepo;
+    
+    @Value("${numero.maximo.ley}")
+    private Integer numeroLeyMaximo;
     
     // Use a local, bounded, named ThreadPoolExecutor per batch (Option A)
     Semaphore semaphore = new Semaphore(2); // ajustar según concurrencia deseada
@@ -134,7 +137,7 @@ public class LeyOrquestadorService {
     public void updateLinksSecondPageV2() {
 
             List<Ley> todas = leyRepository
-                    .findByLinkTextoNormaLegalIsNullAndLinkFichaTecnicaIsNull();
+                    .findBylinkTerceraPaginaIsNull();
 
 
             if (todas.isEmpty()) {
@@ -418,6 +421,63 @@ public class LeyOrquestadorService {
             log.error("Error al eliminar documentos de 'ErrorScraping'", e);
             throw new RuntimeException("Error al eliminar documentos de 'ErrorScraping'", e);
         }
+    }
+    
+    /*----------------------------------------------------------------------------------------*/
+    
+    @Transactional
+    public List<Ley> ejecutarScrapingYGuardarProgramado(String url) {
+
+    	validarParametrosProgramado(url);
+        
+        WebDriver driver = null;
+
+        try {
+            log.info("Obteniendo leyes (Programado) desde URL: {}", url);
+            
+            driver = driverFactory.createDriver();
+            
+            Historial lastHistory = getLastLowHistory(); // cota minima
+            Integer numeroLeyUltimo = lastHistory.getNumero() + 1;
+            //Integer numeroLeyMaximo = 40000;
+
+            List<Ley> leyes = scraperService.todasLeyesV2Programado(url, driver, numeroLeyUltimo.toString(), numeroLeyMaximo.toString());
+
+            if (leyes.isEmpty()) {
+                log.warn("No se encontraron leyes para guardar");
+                return Collections.emptyList();
+            }
+
+            // Guardar la última ley obtenida
+            historialRepository.save(cotaSuperior(leyes));
+
+            log.info("Guardando {} leyes en la base de datos...", leyes.size());
+
+            return leyRepository.saveAll(leyes);
+
+        } catch (Exception e) {
+            log.error("Error en ejecutarScrapingYGuardar Programado: {}", e.getMessage(), e);
+            throw new RuntimeException("Error en scraping o guardado de leyes - Programado", e);
+        }
+    }
+    
+    private void validarParametrosProgramado(String url) {
+        if (url == null || url.isBlank())
+            throw new IllegalArgumentException("URL no puede ser nula o vacía");
+    }
+    
+    public Historial getLastLowHistory(){
+    	
+    	try {
+			log.info("Obteniendo ultima ley de la colección 'historial'...");
+			return historialRepository.findTopByOrderByFechaRegistroDesc()
+		            .orElse(null);   // o lanzar excepción, según tu lógica
+	        
+		} catch (Exception e) {
+			log.error("Error al obtener maximo de 'Historial': {}", e.getMessage(), e);
+			throw new RuntimeException("Error al obtener maximo de 'Historial'", e);
+		}
+        
     }
 
     
