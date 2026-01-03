@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -22,6 +23,7 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Component;
 
+import com.tesis.webscraping.model.Congresista;
 import com.tesis.webscraping.model.Ley;
 import com.tesis.webscraping.model.RegistroTabla;
 import com.tesis.webscraping.util.LogUtil;
@@ -797,5 +799,152 @@ public class SeleniumScraperService {
 	        return "2";
 	    }
 	}
+	
+	
+	public List<Congresista> obtenerCongresistasDesdeWeb(String url, WebDriver driver){
+		
+		List<Congresista> congresistaAll = new ArrayList<>();
+		
+		try {
+            driver.get(url);
+            
+            // Esperar que cargue el formulario
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("objContents")));
+            
+            // Extraer las leyes de la tabla
+            WebElement tabla = driver.findElement(By.className("congresistas"));
+            List<WebElement> filas = tabla.findElements(By.tagName("tr"));
+            
+            for (WebElement fila : filas) {
+            	List<WebElement> columnas = fila.findElements(By.tagName("td"));
+            	
+            	if (columnas.size() >= 4) {
+                    String nombresCompletos = columnas.get(1).getText();
+                    
+                    WebElement enlace = columnas.get(1).findElement(By.tagName("a"));
+                    
+                    String href = enlace.getAttribute("href");
+                    
+                    // Decodifica los caracteres especiales
+                    String hrefDecodificado = UtilitarioScraping.decodificarURL(href);
+                    //String hrefUrl = "https://www.congreso.gob.pe/pleno/congresistas/".concat(hrefDecodificado);
+                    
+
+                    Congresista registro = Congresista.builder()
+                    		.nombreCompleto(nombresCompletos)
+                    		.enlaceFichaTecnica(hrefDecodificado)
+                    		.build();
+                    		
+                    congresistaAll.add(registro);
+                    
+                }
+            }
+            
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			if (driver != null) {
+                driver.quit();
+            }
+		}
+		
+		return congresistaAll;
+	}
+	
+	public Map<String, String> scrapingCongresistaFT(WebDriver driver, String url){
+		
+		log.info("[SCRAPING] URL={}", url);
+		
+		Map<String, String> congresistaFT = new HashMap<>(); 
+		
+		try {
+			driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(8));
+			driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(5));
+			
+            driver.get(url);
+            
+            // Esperar que cargue la pagina
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(4));
+            wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("dgenerales")));
+            
+            WebElement ficha = driver.findElement(By.cssSelector("div.ficha-congresista"));
+
+            Map<String, String> datos = extraerCamposFichaFT(ficha);
+
+            congresistaFT.put("votacion", datos.get("Votación Obtenida"));
+            congresistaFT.put("fechaInicio", datos.get("Periodo Inicio"));
+            congresistaFT.put("fechaFin", datos.get("Periodo Término"));
+            congresistaFT.put("partidoPolitico", datos.get("Grupo o Partido Político"));
+            congresistaFT.put("bancada", datos.get("Bancada"));
+            congresistaFT.put("distritoElectoral", datos.get("Distrito Electoral"));
+            congresistaFT.put("condicion", datos.get("Condición"));
+            
+		} catch (Exception e) {
+			log.error("Error en scrapingFT(url={})", url);
+	        throw new RuntimeException(e);
+		}
+	
+		return congresistaFT;
+	}
+	
+	private Map<String, String> extraerCamposFichaFT(WebElement root) {
+
+	    Map<String, String> resultado = new LinkedHashMap<>();
+
+	    // Selecciona todos los <p> dentro del contenedor
+	    List<WebElement> bloques = root.findElements(By.xpath(".//p"));
+
+	    for (WebElement bloque : bloques) {
+
+	        // Caso normal: field + value
+	        List<WebElement> fields = bloque.findElements(By.cssSelector("span.field"));
+	        List<WebElement> values = bloque.findElements(By.cssSelector("span.value"));
+
+	        // Caso especial: Periodo (Inicio / Término)
+	        if (bloque.getAttribute("class").contains("periodo")) {
+
+	            for (WebElement periodo : bloque.findElements(By.cssSelector("span.periododatos"))) {
+
+	                String subCampo = periodo.findElement(By.cssSelector("span.field"))
+	                                          .getText()
+	                                          .replace(":", "")
+	                                          .trim();
+
+	                String valor = periodo.findElement(By.cssSelector("span.value"))
+	                                       .getText()
+	                                       .trim();
+
+	                resultado.put("Periodo " + subCampo, valor);
+	            }
+
+	            continue;
+	        }
+
+	        // Caso estándar
+	        if (!fields.isEmpty() && !values.isEmpty()) {
+
+	            String campo = fields.get(0)
+	                    .getText()
+	                    .replace(":", "")
+	                    .trim();
+
+	            String valor;
+
+	            // Si el value tiene <a>, obtener href
+	            List<WebElement> links = values.get(0).findElements(By.tagName("a"));
+	            if (!links.isEmpty()) {
+	                valor = links.get(0).getAttribute("href");
+	            } else {
+	                valor = values.get(0).getText().trim();
+	            }
+
+	            resultado.put(campo, valor);
+	        }
+	    }
+
+	    return resultado;
+	}
+
 	
 }

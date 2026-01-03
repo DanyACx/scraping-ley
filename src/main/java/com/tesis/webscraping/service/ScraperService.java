@@ -6,6 +6,7 @@ import java.util.Map;
 import org.openqa.selenium.WebDriver;
 import org.springframework.stereotype.Service;
 
+import com.tesis.webscraping.model.Congresista;
 import com.tesis.webscraping.model.Ley;
 import com.tesis.webscraping.model.RegistroTabla;
 
@@ -59,5 +60,22 @@ public class ScraperService {
 		List<Ley> leyes = seleniumScraperService.obtenerTodasLeyesV2Programado(url, driver, numeroLeyUltimo, numeroLeyMaximo);
 		
 		return leyes;
+	}
+	
+	/*-------------------------------------------------------------------*/
+	
+	/*-------------------------------- PARA CONGRESISTA --------------------------------------------*/
+	
+	public List<Congresista> extraerCongresistas(String url, WebDriver driver) {
+		List<Congresista> congresistas = seleniumScraperService.obtenerCongresistasDesdeWeb(url, driver);
+		
+		return congresistas;
+	}
+	
+	public Map<String, String> scrapingCongresistaFichaTecnica(WebDriver driver, String url){
+		
+		Map<String, String> urlsMap = seleniumScraperService.scrapingCongresistaFT(driver, url);
+		
+		return urlsMap;
 	}
 }
